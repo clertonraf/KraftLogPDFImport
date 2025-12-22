@@ -1,11 +1,13 @@
 # Test Suite Documentation
 
 ## Overview
-This project now includes comprehensive unit test coverage with **72 test methods** across **9 test classes** covering all main components of the application.
+This project includes comprehensive test coverage with **79 test methods** across **10 test classes** covering all components of the application, including unit tests and integration tests.
 
 ## Test Coverage
 
-### DTO Tests (15 tests)
+### Unit Tests (72 tests)
+
+#### DTO Tests (15 tests)
 - **ExerciseCreateRequestTest** (8 tests)
   - Validation testing for `@NotBlank` constraint on name field
   - Builder pattern testing
@@ -82,11 +84,32 @@ This project now includes comprehensive unit test coverage with **72 test method
   - Spring context loading
   - Main method execution
 
+---
+
+### Integration Tests (7 tests)
+
+- **KraftLogApiIntegrationTest** (7 tests)
+  - Full end-to-end integration with KraftLog API
+  - Uses WireMock to simulate API responses
+  - Tests HTTP communication, authentication, and error handling
+  
+  **Test Scenarios:**
+  1. **Successful Exercise Import** - Verifies complete import flow
+  2. **API Authentication Failure** - Tests 401 Unauthorized handling
+  3. **API Server Errors** - Tests 500 Internal Server Error handling
+  4. **Partial Success** - Tests mixed success/failure scenarios
+  5. **API Timeout** - Tests timeout handling (30s delay)
+  6. **Request Format Validation** - Verifies JSON payload structure
+  7. **End-to-End REST Endpoint** - Tests full HTTP request/response cycle
+
 ## Test Statistics
-- **Total Test Files**: 9
-- **Total Test Methods**: 72
+- **Total Test Files**: 10
+- **Total Test Methods**: 79
+  - **Unit Tests**: 72
+  - **Integration Tests**: 7
 - **Tests Passing (without Mockito)**: 42
 - **Tests with Mockito (requires Java ≤ 21)**: 30
+- **Integration Tests (requires WireMock)**: 7
 
 ## Running Tests
 
@@ -95,15 +118,48 @@ This project now includes comprehensive unit test coverage with **72 test method
 mvn test
 ```
 
+### Run Only Unit Tests
+```bash
+mvn test -DexcludeGroups=integration
+```
+
+### Run Only Integration Tests
+```bash
+mvn test -Dtest=*IntegrationTest
+```
+
 ### Run Specific Test Class
 ```bash
 mvn test -Dtest=ExerciseCreateRequestTest
+mvn test -Dtest=KraftLogApiIntegrationTest
 ```
 
 ### Run with Coverage Report
 ```bash
 mvn test jacoco:report
 ```
+
+## Integration Test Details
+
+### Technology Stack
+- **WireMock 3.3.1**: HTTP mocking framework
+- **Spring Boot Test**: Integration test support
+- **TestRestTemplate**: HTTP client for testing
+- **Random Port**: Tests use random ports to avoid conflicts
+
+### Configuration
+Integration tests use a separate profile (`integration`) with:
+- Random server port
+- WireMock server on dynamic port
+- Test-specific credentials
+- In-memory configuration
+
+### Test Data
+Tests use:
+- Temporary PDF files created programmatically
+- Mock HTTP responses from WireMock
+- Realistic exercise data with muscle groups
+- YouTube video links
 
 ## Known Issues
 

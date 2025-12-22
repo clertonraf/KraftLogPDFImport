@@ -1,0 +1,27 @@
+server:
+  port: 0 # Random port for tests
+
+spring:
+  application:
+    name: kraftlog-pdf-import-test
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# KraftLog API Configuration for Integration Tests
+kraftlog:
+  api:
+    base-url: http://localhost:${wiremock.server.port}
+    auth:
+      username: test-user
+      password: test-password
+  
+  muscle-groups:
+    config-path: exercise-muscle-groups.yml
+
+# Logging
+logging:
+  level:
+    com.kraftlog.pdfimport: DEBUG
+    org.wiremock: INFO
