@@ -49,75 +49,98 @@ public class PdfParserService {
         
         String[] lines = text.split("\n");
         String currentMuscleGroup = null;
-        List<String> exerciseNames = new ArrayList<>();
-        List<String> urls = new ArrayList<>();
         
-        // First pass: separate exercise names and URLs
         for (String line : lines) {
             line = line.trim();
             
+            // Skip empty lines
+            if (line.isEmpty()) {
+                continue;
+            }
+            
+            // Check for muscle group header
             String detectedMuscleGroup = detectMuscleGroup(line);
             if (detectedMuscleGroup != null) {
-                // Process accumulated exercises before switching muscle groups
-                exercises.addAll(matchExercisesWithUrls(exerciseNames, urls, currentMuscleGroup));
-                exerciseNames.clear();
-                urls.clear();
-                
                 currentMuscleGroup = detectedMuscleGroup;
                 log.debug("Found muscle group: {}", currentMuscleGroup);
                 continue;
             }
             
-            if (line.isEmpty() || line.startsWith("EXERCÍCIO") || line.startsWith("VÍDEO") || 
-                line.contains("Execução em Vídeo") || line.startsWith("Leandro Twin") ||
-                line.startsWith("CREF:") || line.startsWith("WhatsApp:") || line.startsWith("www.")) {
+            // Skip title, footer, and table headers
+            if (line.startsWith("Vídeos dos Exercícios") ||
+                line.contains("Alguns exercícios podem ter") ||
+                line.contains("portanto para não haver") ||
+                line.startsWith("Leandro Twin") ||
+                line.startsWith("CREF:") ||
+                line.startsWith("WhatsApp:") ||
+                line.startsWith("www.") ||
+                line.contains("Exercício") && line.contains("Execução em Vídeo") ||
+                line.startsWith("Técnicas Avançadas") ||
+                line.contains("Não encontrou o que queria") ||
+                line.contains("forma 100% original") ||
+                line.contains("Bi-set") ||
+                line.contains("Agonista x Antagonista") ||
+                line.contains("Alongamentos")) {
                 continue;
             }
             
-            // Check if line contains a URL
-            Matcher urlMatcher = URL_PATTERN.matcher(line);
-            if (urlMatcher.find()) {
-                urls.add(urlMatcher.group());
-            } else if (currentMuscleGroup != null && !line.isEmpty() && line.length() >= 3) {
-                // This is likely an exercise name
-                String cleanName = cleanExerciseName(line);
-                if (!cleanName.isEmpty() && cleanName.length() >= 3) {
-                    exerciseNames.add(cleanName);
+            // If we have a current muscle group, try to parse exercise from this line
+            if (currentMuscleGroup != null) {
+                ParsedExerciseData exercise = parseExerciseLine(line, currentMuscleGroup);
+                if (exercise != null) {
+                    exercises.add(exercise);
+                    log.debug("Parsed exercise: {} | Group: {} | URL: {}", 
+                            exercise.getName(), exercise.getMuscleGroupPortuguese(), exercise.getVideoUrl());
                 }
             }
         }
         
-        // Process remaining exercises
-        exercises.addAll(matchExercisesWithUrls(exerciseNames, urls, currentMuscleGroup));
-        
         return exercises;
     }
     
-    private List<ParsedExerciseData> matchExercisesWithUrls(List<String> exerciseNames, 
-                                                            List<String> urls, 
-                                                            String muscleGroup) {
-        List<ParsedExerciseData> exercises = new ArrayList<>();
+    private ParsedExerciseData parseExerciseLine(String line, String muscleGroup) {
+        // Extract URL if present
+        Matcher urlMatcher = URL_PATTERN.matcher(line);
+        String videoUrl = null;
+        String exerciseName = line;
         
-        if (muscleGroup == null) {
-            return exercises;
+        if (urlMatcher.find()) {
+            videoUrl = urlMatcher.group();
+            // Remove URL from line to get exercise name
+            exerciseName = line.substring(0, urlMatcher.start()).trim();
         }
         
-        // Match exercises with URLs (may have more exercises than URLs or vice versa)
-        for (int i = 0; i < exerciseNames.size(); i++) {
-            String exerciseName = exerciseNames.get(i);
-            String videoUrl = i < urls.size() ? urls.get(i) : null;
-            
-            ParsedExerciseData exercise = ParsedExerciseData.builder()
-                    .name(exerciseName)
-                    .videoUrl(videoUrl)
-                    .muscleGroupPortuguese(muscleGroup)
-                    .build();
-            
-            exercises.add(exercise);
-            log.debug("Matched exercise: {} with URL: {}", exerciseName, videoUrl);
+        // Clean up exercise name
+        exerciseName = cleanExerciseName(exerciseName);
+        
+        // Validate exercise name
+        if (exerciseName.isEmpty() || exerciseName.length() < 3) {
+            return null;
         }
         
-        return exercises;
+        // Skip lines that look like sub-headers or non-exercise text
+        if (isSubHeader(exerciseName)) {
+            return null;
+        }
+        
+        return ParsedExerciseData.builder()
+                .name(exerciseName)
+                .videoUrl(videoUrl)
+                .muscleGroupPortuguese(muscleGroup)
+                .build();
+    }
+    
+    private boolean isSubHeader(String text) {
+        String upper = text.toUpperCase();
+        // Check if this is a sub-muscle-group header rather than an exercise
+        return upper.equals("DELTÓIDES") ||
+               upper.equals("TRAPÉZIO") ||
+               upper.equals("ANTEBRAÇO") ||
+               upper.equals("COXAS") ||
+               upper.equals("PESCOÇO") ||
+               upper.equals("POSTERIOR DE COXA") ||
+               upper.equals("QUADRÍCEPS") ||
+               upper.contains("TÉCNICAS AVANÇADAS");
     }
 
     private String detectMuscleGroup(String line) {
@@ -126,7 +149,8 @@ public class PdfParserService {
         Set<String> configuredHeaders = muscleGroupConfig.getMuscleGroupHeaders();
         
         for (String header : configuredHeaders) {
-            if (upperLine.contains(header.toUpperCase())) {
+            // Exact match for single-word muscle groups
+            if (upperLine.equals(header.toUpperCase())) {
                 return header;
             }
         }
@@ -135,9 +159,17 @@ public class PdfParserService {
     }
 
     private String cleanExerciseName(String name) {
+        // Remove extra whitespace
         name = name.replaceAll("\\s+", " ").trim();
+        
+        // Remove leading numbers, dots, and dashes
         name = name.replaceAll("^[\\d.\\-]+\\s*", "");
+        
+        // Remove pipes and tabs
         name = name.replaceAll("[|\\t]+", " ");
+        
+        // Remove backslashes used in some exercise names
+        name = name.replace("\\", "/");
         
         return name.trim();
     }

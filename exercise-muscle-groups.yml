@@ -2,7 +2,9 @@
 # Maps Portuguese muscle group names (from PDF) to English equivalents
 
 PEITO: CHEST
+PEITORAL: CHEST
 COSTAS: BACK
+DORSAIS: BACK
 OMBROS: SHOULDERS
 BÍCEPS: BICEPS
 TRÍCEPS: TRICEPS
