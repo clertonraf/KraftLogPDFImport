@@ -14,6 +14,7 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 COPY --from=build /app/target/*.jar app.jar
+COPY exercise-muscle-groups.yml .
 
 EXPOSE 8081
 
